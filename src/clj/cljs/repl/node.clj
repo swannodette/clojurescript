@@ -23,8 +23,6 @@
          out (java.io.PrintWriter. (.getOutputStream socket))]
      {:socket socket :in in :out out}))
 
-
-
 (defn close-socket [s]
   (.close (:in s))
   (.close (:out s))
@@ -37,31 +35,32 @@
     (str sb)))
 
 (defn read-response [in]
-  (comment wait till data is available before trying to read)
-  (while (= (.available in) 0))
-  (comment give it a second to write results)
-  (Thread/sleep 1000)
+  (comment wait till data is available before trying to read
+           (while (= (.available in) 0))
+           (comment give it a second to write results)
+           (Thread/sleep 1000))
   (read-available in))
 
 (defn write-socket [out str]
   (doto out (.write str) (.flush)))
 
+(defn setup [ctx]
+  (println ctx)
+  (repl/load-file ctx "cljs/core.cljs"))
 
-(defn eval [ctx str]
-  (write-socket (:out ctx) str)
-  (read-response (:in ctx)))
+(defn node-eval [ctx js]
+  (write-socket (:out ctx) js)
+  {:status :error :value (read-response (:in ctx))})
 
-
+(defn load-javascript [ctx ns url]
+  (node-eval ctx (slurp url)))
 
 
 (extend-protocol repl/IJavaScriptEnv
   clojure.lang.IPersistentMap
-  (-setup [this] )
-  (-evaluate [this filename line js]
-    (println js)
-    {:status :error :value (eval this js)})
-  (-load [this ns url]
-    nil)
+  (-setup [this] (setup this))
+  (-evaluate [this filename line js] (node-eval this js))
+  (-load [this ns url] (load-javascript this ns url))
   (-tear-down [this] (close-socket this)))
 
 (defn repl-env
