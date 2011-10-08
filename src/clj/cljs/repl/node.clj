@@ -16,36 +16,59 @@
            java.net.Socket))
 
 
+
  (defn socket [host port]
    (let [socket (java.net.Socket. host port)
-         in (java.io.BufferedReader. 
-             (java.io.InputStreamReader. (.getInputStream socket)))
+         in (.getInputStream socket)
          out (java.io.PrintWriter. (.getOutputStream socket))]
-     {:in in :out out}))
+     {:socket socket :in in :out out}))
+
+
 
 (defn close-socket [s]
   (.close (:in s))
-  (.close (:out s)))
+  (.close (:out s))
+  (.close (:socket s)))
 
-(defn eval [s str]
-  (.write (:out s) str)
-  (.flush (:out s))
-  (.readLine (:in s)))
+(defn read-available [in]
+  (let [sb (java.lang.StringBuilder.)]
+    (while (> (.available in) 0)
+      (.append sb (char (.read in))))
+    (str sb)))
+
+(defn read-response [in]
+  (comment wait till data is available before trying to read)
+  (while (= (.available in) 0))
+  (comment give it a second to write results)
+  (Thread/sleep 1000)
+  (read-available in))
+
+(defn write-socket [out str]
+  (doto out (.write str) (.flush)))
+
+
+(defn eval [ctx str]
+  (write-socket (:out ctx) str)
+  (read-response (:in ctx)))
+
+
 
 
 (extend-protocol repl/IJavaScriptEnv
   clojure.lang.IPersistentMap
-  (-setup [this]
-    (assoc this :socket (socket (:host this) (:port this))))
+  (-setup [this] )
   (-evaluate [this filename line js]
     (println js)
-    {:status :error :value (eval (:socket this) js)})
+    {:status :error :value (eval this js)})
   (-load [this ns url]
     nil)
-  (-tear-down [this] (close-socket (:socket this))))
+  (-tear-down [this] (close-socket this)))
 
 (defn repl-env
   "Returns a fresh JS environment, suitable for passing to repl.
   Hang on to return for use across repl calls."
-  [& {:as opts}] (merge {:host "localhost" :port 5001} opts))
+  [& {:as opts}] (let
+                     [newopts (merge {:host "localhost" :port 5001} opts)]
+                   (merge (socket (:host newopts) (:port newopts)) newopts)))
+
 
