@@ -45,8 +45,9 @@
   (doto out (.write str) (.flush)))
 
 (defn setup [ctx]
-  (println ctx)
-  (repl/load-file ctx "cljs/core.cljs"))
+  (comment  (println ctx)
+            (repl/load-file ctx "cljs/nodejs.cljs")
+            (repl/load-file ctx "cljs/core.cljs")))
 
 (defn node-eval [ctx js]
   (write-socket (:out ctx) js)
@@ -69,5 +70,3 @@
   [& {:as opts}] (let
                      [newopts (merge {:host "localhost" :port 5001} opts)]
                    (merge (socket (:host newopts) (:port newopts)) newopts)))
-
-
