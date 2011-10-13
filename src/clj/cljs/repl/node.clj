@@ -11,10 +11,13 @@
   (:require [clojure.string :as string]
             [clojure.java.io :as io]
             [cljs.compiler :as comp]
-            [cljs.repl :as repl])
+            [cljs.repl :as repl]
+            [cljs.closure :as cljsc])
   (:import cljs.repl.IJavaScriptEnv
            java.net.Socket))
 
+(def current-repl-env (atom nil))
+(def loaded-libs (atom #{}))
 
 
  (defn socket [host port]
@@ -41,13 +44,9 @@
            (Thread/sleep 1000))
   (read-available in))
 
-(defn write-socket [out str]
-  (doto out (.write str) (.flush)))
+(defn write-socket [out ^String s]
+  (doto out (.println s) (.flush)))
 
-(defn setup [ctx]
-  (comment  (println ctx)
-            (repl/load-file ctx "cljs/nodejs.cljs")
-            (repl/load-file ctx "cljs/core.cljs")))
 
 (defn node-eval [ctx js]
   (write-socket (:out ctx) js)
@@ -57,6 +56,12 @@
   (node-eval ctx (slurp url)))
 
 
+(defn setup [repl-env]
+  (let [env {:context :statement :locals {} :ns (@comp/namespaces comp/*cljs-ns*)}
+        scope (:scope repl-env)]
+    (repl/load-file repl-env "cljs/core.cljs")
+    (swap! loaded-libs conj "cljs.core")))
+
 (extend-protocol repl/IJavaScriptEnv
   clojure.lang.IPersistentMap
   (-setup [this] (setup this))
@@ -64,9 +69,14 @@
   (-load [this ns url] (load-javascript this ns url))
   (-tear-down [this] (close-socket this)))
 
+
 (defn repl-env
   "Returns a fresh JS environment, suitable for passing to repl.
   Hang on to return for use across repl calls."
-  [& {:as opts}] (let
-                     [newopts (merge {:host "localhost" :port 5001} opts)]
-                   (merge (socket (:host newopts) (:port newopts)) newopts)))
+  [& {:keys [host port] :or {host "localhost" port 5001}}]
+  (let [repl-env (socket host port)
+        base (io/resource "goog/base.js")
+        deps (io/resource "goog/deps.js")]
+    (node-eval repl-env  (slurp  (io/reader base)))
+    (node-eval repl-env  (slurp  (io/reader deps)))
+    repl-env))
