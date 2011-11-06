@@ -36,20 +36,17 @@
   (.flush out))
 
 (defn read-response [^BufferedReader in]
-  (println "reading")
   (let [sb (java.lang.StringBuilder.)]
     (loop [c (.read in)]
-      (println (char c))
-      (if c
+      (if (not= c 0)
         (do
           (.append sb (char c))
           (recur (.read in)))
         (str sb)))))
 
 (defn node-eval [{:keys [in out]} js]
-  (println js)
   (write out js)
-  {:status :success :value nil})
+  {:status :success :value (read-response in)})
 
 (defn load-javascript [ctx ns url]
   (node-eval ctx (slurp url)))

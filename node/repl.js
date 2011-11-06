@@ -22,7 +22,7 @@ net.createServer(function (socket) {
       }
     }
     if(ret != undefined) {
-      socket.write(ret.toString()+"\n");
+      socket.write(ret.toString()+"\0");
     }
   });
 }).listen(5001);
