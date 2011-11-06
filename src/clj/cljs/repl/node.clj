@@ -35,15 +35,6 @@
   (.write out js)
   (.flush out))
 
-(write w
-  "cljs.core.pr_str.call(null,(function (){
-     var ret__1678__auto____1729 = cljs.user.y = 17;
-     cljs.core._STAR_3 = cljs.core._STAR_2;
-     cljs.core._STAR_2 = cljs.core._STAR_1;
-     cljs.core._STAR_1 = ret__1678__auto____1729;
-     return ret__1678__auto____1729;
-  })());")
-
 (defn read-response [^BufferedReader in]
   (println "reading")
   (let [sb (java.lang.StringBuilder.)]

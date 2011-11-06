@@ -3,10 +3,11 @@ process.env.NODE_DISABLE_COLORS = true;
 var net = require("net"),
     repl = require("repl"),
     vm = require("vm"),
-    bootstrap = require("./bootstrap.js"),
-    cljs = bootstrap.cljs,
-    goog = bootstrap.goog,
-    _;
+    context = vm.createContext(),
+    bootstrap = require("./bootstrap.js");
+
+context.cljs = bootstrap.cljs;
+context.goog = bootstrap.goog;
 
 net.createServer(function (socket) {
   socket.setEncoding("utf8");
@@ -15,12 +16,11 @@ net.createServer(function (socket) {
     data = data.trim();
     if(data) {
       try {
-        ret = vm.runInThisContext(data);
+        ret = vm.runInContext(data, context, "repl");
       } catch (x) {
         console.log("Error:", x);
       }
     }
-    console.log(_);
     if(ret != undefined) {
       socket.write(ret.toString()+"\n");
     }
