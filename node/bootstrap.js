@@ -7023,10 +7023,6 @@ cljs.core.get_method = function(a, b) {
 cljs.core.prefers = function(a) {
   return cljs.core._prefers.call(null, a)
 };
-cljs.nodejs = {};
-cljs.nodejs.require = require;
-cljs.nodejs.process = process;
-cljs.core.string_print = cljs.nodejs.require.call(null, "sys").print;
-cljs.nodejscli = {};
-cljs.core.apply.call(null, cljs.core._STAR_main_cli_fn_STAR_, cljs.core.drop.call(null, 2, cljs.nodejs.process.argv));
-
+cljs.user = {};
+exports.cljs = cljs;
+exports.goog = goog;
