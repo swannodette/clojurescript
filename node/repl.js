@@ -3,8 +3,7 @@ process.env.NODE_DISABLE_COLORS = true;
 var net = require("net"),
     repl = require("repl"),
     vm = require("vm"),
-    context = vm.createContext(),
-    bootstrap = require("./bootstrap.js");
+    context = vm.createContext();
 
 net.createServer(function (socket) {
   var buffer = "";
