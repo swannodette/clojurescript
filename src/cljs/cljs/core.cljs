@@ -196,6 +196,9 @@
   ICollection
   (-conj [_ o] (list o))
 
+  IPrintable
+  (-pr-seq [o] (list "nil"))
+
   IIndexed
   (-nth
    ([_ n] nil)
@@ -248,6 +251,10 @@
   IHash
   (-hash [o] o))
 
+(extend-type boolean
+  IHash
+  (-hash [o] (js* "((~{o} === true) ? 1 : 0)")))
+
 (extend-type function
   IHash
   (-hash [o] (goog.getUid o)))
@@ -286,12 +293,27 @@ reduces them without incurring seq initialization"
   (-rest [_] (if (< (inc i) (.length a))
                (IndexedSeq. a (inc i))
                (list)))
+
   ICounted
-  (-count [_] (.length a))
+  (-count [_] (- (.length a) i))
+
+  IIndexed
+  (-nth [coll n]
+    (let [i (+ n i)]
+      (when (< i (.length a))
+        (aget a i))))
+  (-nth [coll n not-found]
+    (let [i (+ n i)]
+      (if (< i (.length a))
+        (aget a i)
+        not-found)))
 
   ISequential
   IEquiv
   (-equiv [coll other] (equiv-sequential coll other))
+
+  ICollection
+  (-conj [coll o] (cons o coll))
 
   IReduce
   (-reduce [coll f]
@@ -968,18 +990,31 @@ reduces them without incurring seq initialization"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;; basics ;;;;;;;;;;;;;;;;;;
 
+(defn- str*
+  "Internal - do not use!"
+  ([] "")
+  ([x] (cond
+        (nil? x) ""
+        :else (. x (toString))))
+  ([x & ys]
+     ((fn [sb more]
+        (if more
+          (recur (. sb  (append (str* (first more)))) (next more))
+          (str* sb)))
+      (gstring/StringBuffer. (str* x)) ys)))
+
 (defn str
   "With no args, returns the empty string. With one arg x, returns
   x.toString().  (str nil) returns the empty string. With more than
   one arg, returns the concatenation of the str values of the args."
   ([] "")
-  ([x] (if (nil? x) "" (. x (toString))))
+  ([x] (cond
+        (symbol? x) (. x (substring 2 (.length x)))
+        (keyword? x) (str* ":" (. x (substring 2 (.length x))))
+        (nil? x) ""
+        :else (. x (toString))))
   ([x & ys]
-     ((fn [sb more]
-        (if more
-          (recur (. sb  (append (str (first more)))) (next more))
-          (str sb)))
-      (gstring/StringBuffer. (str x)) ys)))
+     (apply str* x ys)))
 
 (defn subs
   "Returns the substring of s beginning at start inclusive, and ending
@@ -990,17 +1025,17 @@ reduces them without incurring seq initialization"
 (defn symbol
   "Returns a Symbol with the given namespace and name."
   ([name] (cond (symbol? name) name
-                (keyword? name) (str "\uFDD1" "'" (subs name 2))
-                :else (str "\uFDD1" "'" name)))
-  ([ns name] (symbol (str ns "/" name))))
+                (keyword? name) (str* "\uFDD1" "'" (subs name 2)))
+     :else (str* "\uFDD1" "'" name))
+  ([ns name] (symbol (str* ns "/" name))))
 
 (defn keyword
   "Returns a Keyword with the given namespace and name.  Do not use :
   in the keyword strings, it will be added automatically."
   ([name] (cond (keyword? name) name
-                (symbol? name) (str "\uFDD0" "'" (subs name 2))
-                :else (str "\uFDD0" "'" name)))
-  ([ns name] (keyword (str ns "/" name))))
+                (symbol? name) (str* "\uFDD0" "'" (subs name 2))
+                :else (str* "\uFDD0" "'" name)))
+  ([ns name] (keyword (str* ns "/" name))))
 
 
 
@@ -2214,9 +2249,9 @@ reduces them without incurring seq initialization"
     (loop [ret {} keys (seq keyseq)]
       (if keys
         (let [key   (first keys)
-              entry (get map key)]
+              entry (get map key ::not-found)]
           (recur
-           (if entry
+           (if (not= entry ::not-found)
              (assoc ret key entry)
              ret)
            (next keys)))
