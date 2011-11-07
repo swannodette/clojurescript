@@ -18,7 +18,8 @@ net.createServer(function (socket) {
       try {
         ret = vm.runInContext(data, context, "repl");
       } catch (x) {
-        socket.write(x.toString()+"\0");
+        console.log(x.stack);
+        socket.write(x.stack+"\0");
       }
     }
     if(ret != undefined) {
