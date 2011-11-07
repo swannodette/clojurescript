@@ -56,6 +56,7 @@
         scope (:scope repl-env)]
     ;;(repl/load-file repl-env "cljs/core.cljs")
     ;;(swap! loaded-libs conj "cljs.core")
+    ;;(repl/evaluate-form repl-env env "<cljs repl>" '(ns cljs.user))
     ))
 
 (extend-protocol repl/IJavaScriptEnv
@@ -66,13 +67,10 @@
   (-tear-down [this] (close-socket this)))
 
 (defn repl-env
-  "Returns a fresh JS environment, suitable for passing to repl.
-  Hang on to return for use across repl calls."
   [& {:keys [host port] :or {host "localhost" port 5001}}]
   (let [repl-env (socket host port)
-        ;;base (io/resource "goog/base.js")
-        ;;deps (io/resource "goog/deps.js")
-        ]
-    ;;(node-eval repl-env  (slurp  (io/reader base)))
-    ;;(node-eval repl-env  (slurp  (io/reader deps)))
+        base (io/resource "goog/base.js")
+        deps (io/resource "goog/deps.js")]
+    ;;(node-eval repl-env (slurp (io/reader base)))
+    ;;(node-eval repl-env (slurp (io/reader deps)))
     repl-env))
