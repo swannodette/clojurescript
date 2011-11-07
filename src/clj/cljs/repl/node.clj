@@ -55,11 +55,12 @@
 (defn setup [repl-env]
   (let [env {:context :statement :locals {} :ns (@comp/namespaces comp/*cljs-ns*)}
         scope (:scope repl-env)]
-    ;;(repl/load-file repl-env "cljs/core.cljs")
-    ;;(swap! loaded-libs conj "cljs.core")
-    ;;(println "exit setup")
-    ;;(repl/evaluate-form repl-env env "<cljs repl>" '(ns cljs.user))
-    ))
+    (repl/load-file repl-env "cljs/core.cljs")
+    (repl/evaluate-form repl-env
+                        env
+                        "<cljs repl>"
+                        '(ns cljs.user))
+    (swap! loaded-libs conj "cljs.core")))
 
 (extend-protocol repl/IJavaScriptEnv
   clojure.lang.IPersistentMap
@@ -67,6 +68,8 @@
   (-evaluate [this filename line js] (node-eval this js))
   (-load [this ns url] (load-javascript this ns url))
   (-tear-down [this] (close-socket this)))
+
+;; do we need to implement our own version of goog.require ? - David
 
 (defn repl-env
   [& {:keys [host port] :or {host "localhost" port 5001}}]

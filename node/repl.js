@@ -6,9 +6,6 @@ var net = require("net"),
     context = vm.createContext(),
     bootstrap = require("./bootstrap.js");
 
-context.cljs = bootstrap.cljs;
-context.goog = bootstrap.goog;
-
 net.createServer(function (socket) {
   var buffer = "";
   socket.setEncoding("utf8");
@@ -22,10 +19,13 @@ net.createServer(function (socket) {
       }
       var ret;
       if(data) {
-        data = data.substring(0, data.length-1);
+        // not sure how \0's are getting through - David
+        data = data.replace(/\0/g, "");
         try {
+          //console.log(data);
           ret = vm.runInContext(data, context, "repl");
         } catch (x) {
+          //console.log(data);
           console.log(x.stack);
           socket.write(x.stack+"\0");
         }
