@@ -56,11 +56,15 @@
   (let [env {:context :statement :locals {} :ns (@comp/namespaces comp/*cljs-ns*)}
         scope (:scope repl-env)]
     (repl/load-file repl-env "cljs/core.cljs")
+    (swap! loaded-libs conj "cljs.core")
     (repl/evaluate-form repl-env
                         env
                         "<cljs repl>"
                         '(ns cljs.user))
-    (swap! loaded-libs conj "cljs.core")))
+    (repl/evaluate-form repl-env
+                        env
+                        "<cljs repl>"
+                        '(set! *print-fn* (fn [x] (. js/console (log (pr-str x))))))))
 
 (extend-protocol repl/IJavaScriptEnv
   clojure.lang.IPersistentMap

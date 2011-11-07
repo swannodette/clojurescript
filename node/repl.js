@@ -8,8 +8,14 @@ var net = require("net"),
 context.require = require;
 
 net.createServer(function (socket) {
-  var buffer = "";
+  var buffer = "", ret;
   socket.setEncoding("utf8");
+  context.console = {
+    log: function(x) {
+      ret = vm.runInContext(x, context, "repl");
+      socket.write(ret.toString()+"\n");
+    }
+  };
   socket.on("data", function(data) {
     if(data[data.length-1] != "\0") {
       buffer += data;
@@ -18,7 +24,6 @@ net.createServer(function (socket) {
         data = buffer + data;
         buffer = "";
       }
-      var ret;
       if(data) {
         // not sure how \0's are getting through - David
         data = data.replace(/\0/g, "");
@@ -32,10 +37,11 @@ net.createServer(function (socket) {
         }
       }
       if(ret !== undefined && ret !== null) {
-        socket.write(ret.toString()+"\0");        
+        socket.write(ret.toString());        
       } else {
-        socket.write("nil\0");
+        socket.write("nil");
       }
+      socket.write("\0");
     }
   });
 }).listen(5001);
