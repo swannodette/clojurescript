@@ -5,6 +5,8 @@ var net = require("net"),
     vm = require("vm"),
     context = vm.createContext();
 
+context.require = require;
+
 net.createServer(function (socket) {
   var buffer = "";
   socket.setEncoding("utf8");
@@ -26,7 +28,7 @@ net.createServer(function (socket) {
         } catch (x) {
           //console.log(data);
           console.log(x.stack);
-          socket.write(x.stack+"\0");
+          socket.write(x.stack+"\n");
         }
       }
       if(ret !== undefined && ret !== null) {
