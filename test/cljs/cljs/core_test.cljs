@@ -296,8 +296,8 @@
   (assert (= 1 (min 1 2 3 4 5)))
   (assert (= 0.5 (min 5 4 3 0.5 2 1)))
   (let [x (array 1 2 3)]
-    (set! (.foo x) :hello)
-    (assert (= (.foo x) :hello)))
+    (set! (.-foo x) :hello)
+    (assert (= (.-foo x) :hello)))
 
   (assert (set []))
   (assert (= #{} (set [])))
@@ -726,6 +726,23 @@
   (assert (= (assoc fred :lastname "Flintstone") {:firstname "Fred" :lastname "Flintstone"}))
   (assert (= (assoc fred :wife :ethel) {:firstname "Fred" :lastname "Mertz" :wife :ethel}))
   (assert (= (dissoc ethel :husband) {:firstname "Ethel" :lastname "Mertz"}))
+
+  ;; dot
+  (let [s "abc"]
+    (assert (= 3 (.-length s)))
+    (assert (= 3 (. s -length)))
+    (assert (= 3 (. (str 138) -length)))
+    (assert (= 3 (. "abc" -length)))
+    (assert (= "bc" (.substring s 1)))
+    (assert (= "bc" (.substring "abc" 1)))
+    (assert (= "bc" (. s substring 1)))
+    (assert (= "bc" (. s (substring 1))))
+    (assert (= "bc" (. s (substring 1 3))))
+    (assert (= "bc" (.substring s 1 3)))
+    (assert (= "ABC" (. s (toUpperCase))))
+    (assert (= "ABC" (. "abc" (toUpperCase))))
+    (assert (= "BC" (. (.toUpperCase s) substring 1)))
+    (assert (= 2 (.-length (. (.toUpperCase s) substring 1)))))
 
   (assert (instance? js/Object 1))
   (assert (instance? js/Number 1))
