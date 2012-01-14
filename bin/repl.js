@@ -45,3 +45,5 @@ net.createServer(function (socket) {
     }
   });
 }).listen(5001);
+
+console.log("repl.js listening on 5001")
