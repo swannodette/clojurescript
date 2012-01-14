@@ -33,13 +33,13 @@
 
 (defn write [^BufferedWriter out ^String js]
   (.write out js)
-  (.write out (int 0))
+  (.write out (int 0)) ;; terminator
   (.flush out))
 
 (defn read-response [^BufferedReader in]
   (let [sb (java.lang.StringBuilder.)]
     (loop [c (.read in)]
-      (if (not= c 0)
+      (if (not= c 0) ;; terminator
         (do
           (.append sb (char c))
           (recur (.read in)))

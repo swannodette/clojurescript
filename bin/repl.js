@@ -10,12 +10,15 @@ context.require = require;
 net.createServer(function (socket) {
   var buffer = "", ret;
   socket.setEncoding("utf8");
+
+  // redefine console.log
   context.console = {
     log: function(x) {
       ret = vm.runInContext(x, context, "repl");
       socket.write(ret.toString()+"\n");
     }
   };
+
   socket.on("data", function(data) {
     if(data[data.length-1] != "\0") {
       buffer += data;
@@ -28,10 +31,8 @@ net.createServer(function (socket) {
         // not sure how \0's are getting through - David
         data = data.replace(/\0/g, "");
         try {
-          //console.log(data);
           ret = vm.runInContext(data, context, "repl");
         } catch (x) {
-          //console.log(data);
           console.log(x.stack);
           socket.write(x.stack+"\n");
         }
@@ -44,6 +45,7 @@ net.createServer(function (socket) {
       socket.write("\0");
     }
   });
+
 }).listen(5001);
 
 console.log("repl.js listening on 5001")
