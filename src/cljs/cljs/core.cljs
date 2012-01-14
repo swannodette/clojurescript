@@ -45,6 +45,10 @@
    (aget p "_")
    false))
 
+(defn is_proto_
+  [x]
+  (js* "(~{x}).constructor.prototype === ~{x}"))
+
 (def
   ^{:doc "When compiled for a command-line target, whatever
   function *main-fn* is set to will be called with the command-line
@@ -463,9 +467,9 @@ reduces them without incurring seq initialization"
   also works for strings, arrays, regex Matchers and Lists, and,
   in O(n) time, for sequences."
   ([coll n]
-     (-nth coll n))
+     (-nth coll (.floor js/Math n)))
   ([coll n not-found]
-     (-nth coll n not-found)))
+     (-nth coll (.floor js/Math n) not-found)))
 
 (defn get
   "Returns the value mapped to key, not-found or nil if key not present."
@@ -1454,9 +1458,7 @@ reduces them without incurring seq initialization"
   "Takes a set of functions and returns a fn that is the composition
   of those fns.  The returned fn takes a variable number of args,
   applies the rightmost of fns to the args, the next
-  fn (right-to-left) to the result, etc.
-
-  TODO: Implement apply"
+  fn (right-to-left) to the result, etc."
   ([] identity)
   ([f] f)
   ([f g] 
@@ -1484,9 +1486,7 @@ reduces them without incurring seq initialization"
 (defn partial
   "Takes a function f and fewer than the normal arguments to f, and
   returns a fn that takes a variable number of additional args. When
-  called, the returned function calls f with args + additional args.
-
-  TODO: Implement apply"
+  called, the returned function calls f with args + additional args."
   ([f arg1]
    (fn [& args] (apply f arg1 args)))
   ([f arg1 arg2]
@@ -1982,6 +1982,170 @@ reduces them without incurring seq initialization"
   (reduce conj cljs.core.Vector/EMPTY coll)) ; using [] here causes infinite recursion
 
 (defn vector [& args] (vec args))
+
+(deftype Subvec [meta v start end]
+  IWithMeta
+  (-with-meta [coll meta] (Subvec. meta v start end))
+
+  IMeta
+  (-meta [coll] meta)
+
+  IStack
+  (-peek [coll]
+    (-nth v (dec end)))
+  (-pop [coll]
+    (if (= start end)
+      (throw (js/Error. "Can't pop empty vector"))
+      (Subvec. meta v start (dec end))))
+
+  ICollection
+  (-conj [coll o]
+    (Subvec. meta (-assoc-n v end o) start (inc end)))
+
+  IEmptyableCollection
+  (-empty [coll] (with-meta cljs.core.Vector/EMPTY meta))
+
+  ISequential
+  IEquiv
+  (-equiv [coll other] (equiv-sequential coll other))
+
+  IHash
+  (-hash [coll] (hash-coll coll))
+
+  ISeqable
+  (-seq [coll]
+    (let [subvec-seq (fn subvec-seq [i]
+                       (when-not (= i end)
+                         (cons (-nth v i)
+                               (lazy-seq
+                                (subvec-seq (inc i))))))]
+      (subvec-seq start)))
+
+  ICounted
+  (-count [coll] (- end start))
+
+  IIndexed
+  (-nth [coll n]
+    (-nth v (+ start n)))
+  (-nth [coll n not-found]
+    (-nth v (+ start n) not-found))
+
+  ILookup
+  (-lookup [coll k] (-nth coll k nil))
+  (-lookup [coll k not-found] (-nth coll k not-found))
+
+  IAssociative
+  (-assoc [coll key val]
+    (let [v-pos (+ start key)]
+      (Subvec. meta (-assoc v v-pos val)
+               start (max end (inc v-pos)))))
+
+  IVector
+  (-assoc-n [coll n val] (-assoc coll n val))
+
+  IReduce
+  (-reduce [coll f]
+    (ci-reduce coll f))
+  (-reduce [coll f start]
+    (ci-reduce coll f start)))
+
+(defn subvec
+  "Returns a persistent vector of the items in vector from
+  start (inclusive) to end (exclusive).  If end is not supplied,
+  defaults to (count vector). This operation is O(1) and very fast, as
+  the resulting vector shares structure with the original and no
+  trimming is done."
+  ([v start]
+     (subvec v start (count v)))
+  ([v start end]
+     (Subvec. nil v start end)))
+
+(set! cljs.core.Subvec.prototype.call
+      (fn
+        ([_ k] (-lookup (js* "this") k))
+        ([_ k not-found] (-lookup (js* "this") k not-found))))
+
+;;; PersistentQueue ;;;
+
+(deftype PersistentQueueSeq [meta front rear]
+  IWithMeta
+  (-with-meta [coll meta] (PersistentQueueSeq. meta front rear))
+
+  IMeta
+  (-meta [coll] meta)
+
+  ISeq
+  (-first [coll] (-first front))
+  (-rest  [coll]
+    (if-let [f1 (next front)]
+      (PersistentQueueSeq. meta f1 rear)
+      (if (nil? rear)
+        (-empty coll)
+        (PersistentQueueSeq. meta rear nil))))
+
+  ICollection
+  (-conj [coll o] (cons o coll))
+
+  IEmptyableCollection
+  (-empty [coll] (with-meta cljs.core.List/EMPTY meta))
+
+  ISequential
+  IEquiv
+  (-equiv [coll other] (equiv-sequential coll other))
+
+  IHash
+  (-hash [coll] (hash-coll coll))
+
+  ISeqable
+  (-seq [coll] coll))
+
+(deftype PersistentQueue [meta count front rear]
+  IWithMeta
+  (-with-meta [coll meta] (PersistentQueue. meta count front rear))
+
+  IMeta
+  (-meta [coll] meta)
+
+  ISeq
+  (-first [coll] (first front))
+  (-rest [coll] (rest (seq coll)))
+
+  IStack
+  (-peek [coll] (-first front))
+  (-pop [coll]
+    (if front
+      (if-let [f1 (next front)]
+        (PersistentQueue. meta (dec count) f1 rear)
+        (PersistentQueue. meta (dec count) (seq rear) []))
+      coll))
+
+  ICollection
+  (-conj [coll o]
+    (if front
+      (PersistentQueue. meta (inc count) front (conj (or rear []) o))
+      (PersistentQueue. meta (inc count) (conj front o) [])))
+
+  IEmptyableCollection
+  (-empty [coll] cljs.core.PersistentQueue/EMPTY)
+
+  ISequential
+  IEquiv
+  (-equiv [coll other] (equiv-sequential coll other))
+
+  IHash
+  (-hash [coll] (hash-coll coll))
+
+  ISeqable
+  (-seq [coll]
+    (let [rear (seq rear)]
+      (if (or front rear)
+        (PersistentQueueSeq. nil front (seq rear))
+        cljs.core.List/EMPTY)))
+
+  ICounted
+  (-count [coll] count))
+
+(set! cljs.core.PersistentQueue/EMPTY (PersistentQueue. nil 0 nil []))
 
 (deftype NeverEquiv []
   IEquiv
@@ -2537,9 +2701,7 @@ reduces them without incurring seq initialization"
   of those fns.  The returned fn takes a variable number of args, and
   returns a vector containing the result of applying each fn to the
   args (left-to-right).
-  ((juxt a b c) x) => [(a x) (b x) (c x)]
-
-  TODO: Implement apply"
+  ((juxt a b c) x) => [(a x) (b x) (c x)]"
   ([f]
      (fn
        ([] (vector (f)))
@@ -2767,6 +2929,9 @@ reduces them without incurring seq initialization"
   IndexedSeq
   (-pr-seq [coll opts] (pr-sequential pr-seq "(" " " ")" opts coll))
 
+  PersistentQueueSeq
+  (-pr-seq [coll opts] (pr-sequential pr-seq "(" " " ")" opts coll))
+
   List
   (-pr-seq [coll opts] (pr-sequential pr-seq "(" " " ")" opts coll))
 
@@ -2777,6 +2942,9 @@ reduces them without incurring seq initialization"
   (-pr-seq [coll opts] (list "()"))
 
   Vector
+  (-pr-seq [coll opts] (pr-sequential pr-seq "[" " " "]" opts coll))
+
+  Subvec
   (-pr-seq [coll opts] (pr-sequential pr-seq "[" " " "]" opts coll))
 
   ObjMap
@@ -3295,7 +3463,10 @@ reduces them without incurring seq initialization"
   (-methods [mf] @method-table)
   (-prefers [mf] @prefer-table)
 
-  (-invoke [mf args] (do-invoke mf dispatch-fn args)))
+  (-invoke [mf args] (do-invoke mf dispatch-fn args))
+
+  IHash
+  (-hash [this] (goog.getUid this)))
 
 (set! cljs.core.MultiFn.prototype.call
       (fn [_ & args] (-invoke (js* "this") args)))

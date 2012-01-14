@@ -15,7 +15,7 @@
                             memfn ns or proxy proxy-super pvalues refer-clojure reify sync time
                             when when-first when-let when-not while with-bindings with-in-str
                             with-loading-context with-local-vars with-open with-out-str with-precision with-redefs
-                            satisfies?
+                            satisfies? identical?
 
                             aget aset
                             + - * / < <= > >= == zero? pos? neg? inc dec max min mod
@@ -41,6 +41,9 @@
   if-let if-not let letfn loop
   or
   when when-first when-let when-not while])
+
+(defmacro identical? [a b]
+  (list 'js* "(~{} === ~{})" a b))
 
 (defmacro aget [a i]
   (list 'js* "(~{}[~{}])" a i))
@@ -177,9 +180,14 @@
         locals (keys (:locals &env))]
    `(do
       (when (undefined? ~t)
-        (deftype ~t [~@locals]
+        (deftype ~t [~@locals ~'__meta]
+          cljs.core.IWithMeta
+          (~'-with-meta [~'_ ~'__meta]
+            (new ~t ~@locals ~'__meta))
+          cljs.core.IMeta
+          (~'-meta [~'_] ~'__meta)
           ~@impls))
-      (new ~t ~@locals))))
+      (new ~t ~@locals nil))))
 
 (defmacro this-as
   "Defines a scope where JavaScript's implicit \"this\" is bound to the name provided."
@@ -278,7 +286,10 @@
 		  'IHash
 		  `(~'-hash [this#] (hash-coll this#))
 		  'IEquiv
-		  `(~'-equiv [this# other#] (equiv-map this# other#))
+		  `(~'-equiv [this# other#]
+         (and (identical? (.-constructor this#)
+                          (.-constructor other#))
+              (equiv-map this# other#)))
 		  'IMeta
 		  `(~'-meta [this#] ~'__meta)
 		  'IWithMeta
@@ -400,7 +411,7 @@
   [bindings & body]
   (let [names (take-nth 2 bindings)
         vals (take-nth 2 (drop 1 bindings))
-        tempnames (map gensym names)
+        tempnames (map (comp gensym name) names)
         binds (map vector names vals)
         resets (reverse (map vector names tempnames))]
     `(let [~@(interleave tempnames names)]
