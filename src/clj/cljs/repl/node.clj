@@ -38,12 +38,15 @@
 
 (defn read-response [^BufferedReader in]
   (let [sb (java.lang.StringBuilder.)]
-    (loop [c (.read in)]
-      (if (not= c 0) ;; terminator
-        (do
-          (.append sb (char c))
-          (recur (.read in)))
-        (str sb)))))
+    (loop [sb sb c (.read in)]
+      (cond
+       (= c 1) (let [ret (str sb)]
+                 (print ret)
+                 (recur (java.lang.StringBuilder.) (.read in)))
+       (= c 0) (str sb)
+       :else (do
+               (.append sb (char c))
+               (recur sb (.read in)))))))
 
 (defn node-eval [{:keys [in out]} js]
   (write out js)
@@ -64,7 +67,7 @@
     (repl/evaluate-form repl-env
                         env
                         "<cljs repl>"
-                        '(set! *print-fn* (fn [x] (. js/console (log (pr-str x))))))))
+                        '(set! *print-fn* (fn [x] (js/node_repl_print (pr-str x)))))))
 
 (extend-protocol repl/IJavaScriptEnv
   clojure.lang.IPersistentMap

@@ -12,11 +12,10 @@ net.createServer(function (socket) {
   socket.setEncoding("utf8");
 
   // redefine console.log
-  context.console = {
-    log: function(x) {
-      ret = vm.runInContext(x, context, "repl");
-      socket.write(ret.toString()+"\n");
-    }
+  context.node_repl_print = function(x) {
+    ret = vm.runInContext(x, context, "repl");
+    socket.write(ret.toString());
+    socket.write("\1");
   };
 
   socket.on("data", function(data) {
