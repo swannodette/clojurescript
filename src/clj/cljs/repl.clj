@@ -62,8 +62,12 @@
   ([repl-env env filename form wrap]
      (try
        (let [ast (comp/analyze env form)
-             js (comp/emits ast)
-             wrap-js (comp/emits (comp/analyze env (wrap form)))]
+             js (comp/emit-str ast)
+             wrap-js (comp/emit-str (binding [comp/*cljs-warn-on-undeclared* false
+                                           comp/*cljs-warn-on-redef* false
+                                           comp/*cljs-warn-on-dynamic* false
+                                           comp/*cljs-warn-on-fn-var* false]
+                                   (comp/analyze env (wrap form))))]
          (when (= (:op ast) :ns)
            (load-dependencies repl-env (into (vals (:requires ast))
                                              (distinct (vals (:uses ast))))))
@@ -130,14 +134,27 @@
          (println (.getMessage e))
          {:status :error})))
 
+(def default-special-fns
+  (let [load-file-fn (fn [repl-env file] (load-file repl-env file))]
+    {'in-ns (fn [_ quoted-ns]
+              (let [ns-name (second quoted-ns)]
+                (when-not (@comp/namespaces ns-name)
+                  (swap! comp/namespaces assoc ns-name {:name ns-name}))
+                (set! comp/*cljs-ns* ns-name)))
+     'load-file load-file-fn
+     'clojure.core/load-file load-file-fn
+     'load-namespace (fn [repl-env ns] (load-namespace repl-env ns))}))
+
 (defn repl
   "Note - repl will reload core.cljs every time, even if supplied old repl-env"
-  [repl-env & {:keys [verbose warn-on-undeclared]}]
+  [repl-env & {:keys [verbose warn-on-undeclared special-fns]}]
   (prn "Type: " :cljs/quit " to quit")
   (binding [comp/*cljs-ns* 'cljs.user
             *cljs-verbose* verbose
             comp/*cljs-warn-on-undeclared* warn-on-undeclared]
-    (let [env {:context :statement :locals {}}]
+    (let [env {:context :statement :locals {}}
+          special-fns (merge default-special-fns special-fns)
+          is-special-fn? (set (keys special-fns))]
       (-setup repl-env)
       (loop []
         (print (str "ClojureScript:" comp/*cljs-ns* "> "))
@@ -148,14 +165,8 @@
            
            (= status :error) (recur)
            
-           (and (seq? form) (= (first form) 'in-ns))
-           (do (set! comp/*cljs-ns* (second (second form))) (newline) (recur))
-           
-           (and (seq? form) ('#{load-file clojure.core/load-file} (first form)))
-           (do (load-file repl-env (second form)) (newline) (recur))
-           
-           (and (seq? form) ('#{load-namespace} (first form)))
-           (do (load-namespace repl-env (second form)) (newline) (recur))
+           (and (seq? form) (is-special-fn? (first form)))
+           (do (apply (get special-fns (first form)) repl-env (rest form)) (newline) (recur))
            
            :else
            (do (eval-and-print repl-env env form) (recur)))))

@@ -15,7 +15,7 @@
                             memfn ns or proxy proxy-super pvalues refer-clojure reify sync time
                             when when-first when-let when-not while with-bindings with-in-str
                             with-loading-context with-local-vars with-open with-out-str with-precision with-redefs
-                            satisfies? identical? true? false?
+                            satisfies? identical? true? false? nil?
 
                             aget aset
                             + - * / < <= > >= == zero? pos? neg? inc dec max min mod
@@ -42,20 +42,38 @@
   or
   when when-first when-let when-not while])
 
+(defn bool-expr [e]
+  (vary-meta e assoc :tag 'boolean))
+
+(defmacro nil? [x]
+  `(identical? ~x nil))
+
+;; internal - do not use.
+(defmacro coercive-not= [x y]
+  (bool-expr (list 'js* "(~{} != ~{})" x y)))
+
+;; internal - do not use.
+(defmacro coercive-= [x y]
+  (bool-expr (list 'js* "(~{} == ~{})" x y)))
+
 (defmacro true? [x]
-  (list 'js* "~{} === true" x))
+  (bool-expr (list 'js* "~{} === true" x)))
 
 (defmacro false? [x]
-  (list 'js* "~{} === false" x))
+  (bool-expr (list 'js* "~{} === false" x)))
 
 (defmacro undefined? [x]
-  (list 'js* "(void 0 === ~{})" x))
+  (bool-expr (list 'js* "(void 0 === ~{})" x)))
 
 (defmacro identical? [a b]
-  (list 'js* "(~{} === ~{})" a b))
+  (bool-expr (list 'js* "(~{} === ~{})" a b)))
 
-(defmacro aget [a i]
-  (list 'js* "(~{}[~{}])" a i))
+(defmacro aget
+  ([a i]
+     (list 'js* "(~{}[~{}])" a i))
+  ([a i & idxs]
+     (let [astr (apply str (repeat (count idxs) "[~{}]"))]
+      `(~'js* ~(str "(~{}[~{}]" astr ")") ~a ~i ~@idxs))))
 
 (defmacro aset [a i v]
   (list 'js* "(~{}[~{}] = ~{})" a i v))
@@ -67,7 +85,6 @@
   ([x y & more] `(+ (+ ~x ~y) ~@more)))
 
 (defmacro -
-  ([] 0)
   ([x] (list 'js* "(- ~{})" x))
   ([x y] (list 'js* "(~{} - ~{})" x y))
   ([x y & more] `(- (- ~x ~y) ~@more)))
@@ -79,34 +96,33 @@
   ([x y & more] `(* (* ~x ~y) ~@more)))
 
 (defmacro /
-  ([] 1)
-  ([x] `(/ 1 x))
+  ([x] `(/ 1 ~x))
   ([x y] (list 'js* "(~{} / ~{})" x y))
   ([x y & more] `(/ (/ ~x ~y) ~@more)))
 
 (defmacro <
   ([x] true)
-  ([x y] (list 'js* "(~{} < ~{})" x y))
+  ([x y] (bool-expr (list 'js* "(~{} < ~{})" x y)))
   ([x y & more] `(and (< ~x ~y) (< ~y ~@more))))
 
 (defmacro <=
   ([x] true)
-  ([x y] (list 'js* "(~{} <= ~{})" x y))
+  ([x y] (bool-expr (list 'js* "(~{} <= ~{})" x y)))
   ([x y & more] `(and (<= ~x ~y) (<= ~y ~@more))))
 
 (defmacro >
   ([x] true)
-  ([x y] (list 'js* "(~{} > ~{})" x y))
+  ([x y] (bool-expr (list 'js* "(~{} > ~{})" x y)))
   ([x y & more] `(and (> ~x ~y) (> ~y ~@more))))
 
 (defmacro >=
   ([x] true)
-  ([x y] (list 'js* "(~{} >= ~{})" x y))
+  ([x y] (bool-expr (list 'js* "(~{} >= ~{})" x y)))
   ([x y & more] `(and (>= ~x ~y) (>= ~y ~@more))))
 
 (defmacro ==
   ([x] true)
-  ([x y] (list 'js* "(~{} === ~{})" x y))
+  ([x y] (bool-expr (list 'js* "(~{} === ~{})" x y)))
   ([x y & more] `(and (== ~x ~y) (== ~y ~@more))))
 
 (defmacro dec [x]
@@ -171,8 +187,19 @@
 (defmacro bit-shift-right [x n]
   (list 'js* "(~{} >> ~{})" x n))
 
+(defmacro bit-shift-right-zero-fill [x n]
+  (list 'js* "(~{} >>> ~{})" x n))
+
 (defmacro bit-set [x n]
   (list 'js* "(~{} | (1 << ~{}))" x n))
+
+;; internal
+(defmacro mask [hash shift]
+  (list 'js* "((~{} >>> ~{}) & 0x01f)" hash shift))
+
+;; internal
+(defmacro bitpos [hash shift]
+  (list 'js* "(1 << ~{})" `(mask ~hash ~shift)))
 
 (defn- protocol-prefix [psym]
   (str (.replace (str psym) \. \$) "$"))
@@ -190,16 +217,16 @@
 (defmacro reify [& impls]
   (let [t (gensym "t")
         locals (keys (:locals &env))]
-   `(do
-      (when (undefined? ~t)
-        (deftype ~t [~@locals ~'__meta]
-          cljs.core.IWithMeta
-          (~'-with-meta [~'_ ~'__meta]
-            (new ~t ~@locals ~'__meta))
-          cljs.core.IMeta
-          (~'-meta [~'_] ~'__meta)
-          ~@impls))
-      (new ~t ~@locals nil))))
+    `(do
+       (when (undefined? ~t)
+         (deftype ~t [~@locals __meta#]
+           cljs.core.IWithMeta
+           (~'-with-meta [_# __meta#]
+             (new ~t ~@locals __meta#))
+           cljs.core.IMeta
+           (~'-meta [_#] __meta#)
+           ~@impls))
+       (new ~t ~@locals nil))))
 
 (defmacro this-as
   "Defines a scope where JavaScript's implicit \"this\" is bound to the name provided."
@@ -223,7 +250,7 @@
                                  pfn-prefix (subs (str psym) 0 (clojure.core/inc (.lastIndexOf (str psym) ".")))]
                              (cons `(aset ~psym ~t true)
                                    (map (fn [[f & meths]]
-                                          `(aset ~(symbol (str pfn-prefix f)) ~t (fn* ~@meths)))
+                                          `(aset ~(symbol (str pfn-prefix f)) ~t (fn ~@meths)))
                                         sigs))))]
         `(do ~@(mapcat assign-impls impl-map)))
       (let [t (resolve tsym)
@@ -237,23 +264,36 @@
                                                       (list (with-meta (vec args) (meta sig))
                                                             (list* 'this-as tname body))))]
                                  (map (fn [[f & meths]]
-                                        `(set! ~(symbol (str prototype-prefix f)) (fn* ~@(map adapt-params meths))))
+                                        `(set! ~(symbol (str prototype-prefix f)) (fn ~@(map adapt-params meths))))
                                       sigs))
                                (cons `(set! ~(symbol (str prototype-prefix pprefix)) true)
-                                     (map (fn [[f & meths]]
-                                            (let [ifn? (= psym 'cljs.core.IFn)
-                                                  pf (if ifn?
-                                                       (str prototype-prefix 'call)
-                                                       (str prototype-prefix pprefix f))
-                                                  adapt-params (fn [[[tname :as args] & body]]
-                                                                 `(~args
-                                                                   (~'js* "~{} = this" ~tname)
-                                                                   ~@body))
-                                                  meths (if ifn?
-                                                          (map adapt-params meths)
-                                                          meths)]
-                                              `(set! ~(symbol pf) (fn* ~@meths))))
-                                          sigs)))))]
+                                     (mapcat (fn [[f & meths]]
+                                               (let [ifn? (= psym 'cljs.core.IFn)
+                                                     pf (if ifn?
+                                                          (str prototype-prefix 'call)
+                                                          (str prototype-prefix pprefix f))
+                                                     adapt-params (fn [[[targ & args :as sig] & body]]
+                                                                    (let [tsym (gensym "tsym")]
+                                                                      `(~(with-meta (vec (cons tsym args)) (meta sig))
+                                                                        (this-as ~tsym
+                                                                                 (let [~targ ~tsym]
+                                                                                   ~@body)))))
+                                                     meths (if ifn?
+                                                             (map adapt-params meths)
+                                                             meths)]
+                                                 (cond 
+                                                  ifn?
+                                                  [`(set! ~(symbol pf) (fn ~@meths))]
+                                                  
+                                                  (vector? (first meths))
+                                                  [`(set! ~(symbol (str pf "$arity$" (count (first meths)))) (fn ~@meths))]
+
+                                                  :else
+                                                  (map (fn [[sig & body :as meth]]
+                                                         `(set! ~(symbol (str pf "$arity$" (count sig)))
+                                                                (fn ~meth)))
+                                                       meths))))
+                                             sigs)))))]
         `(do ~@(mapcat assign-impls impl-map))))))
 
 (defmacro deftype [t fields & impls]
@@ -309,6 +349,7 @@
                             (drop-while seq? (next s)))
                      ret)))]
     (let [gs (gensym)
+          ksym (gensym "k")
 	  impls (concat
 		 impls
 		 ['IRecord
@@ -325,11 +366,10 @@
 		  `(~'-with-meta [this# ~gs] (new ~tagname ~@(replace {'__meta gs} fields)))
 		  'ILookup
 		  `(~'-lookup [this# k#] (-lookup this# k# nil))
-		  `(~'-lookup [this# k# else#]
-			      (get (merge (hash-map ~@(mapcat (fn [fld] [(keyword fld) fld]) 
-							      base-fields))
-					  ~'__extmap)
-				   k# else#))
+		  `(~'-lookup [this# ~ksym else#]
+         (cond
+           ~@(mapcat (fn [f] [`(identical? ~ksym ~(keyword f)) f]) base-fields)
+           :else (get ~'__extmap ~ksym else#)))
 		  'ICounted
 		  `(~'-count [this#] (+ ~(count base-fields) (count ~'__extmap)))
 		  'ICollection
@@ -411,10 +451,16 @@
         method (fn [[fname & sigs]]
                  (let [sigs (take-while vector? sigs)
                        slot (symbol (str prefix (name fname)))]
-                   `(defn ~fname ~@(map #(expand-sig fname slot %) sigs))))]
+                   `(defn ~fname ~@(map (fn [sig]
+                                          (expand-sig fname
+                                                      (symbol (str slot "$arity$" (count sig)))
+                                                      sig))
+                                        sigs))))]
     `(do
+       (set! ~'*unchecked-if* true)
        (def ~psym (~'js* "{}"))
-       ~@(map method methods))))
+       ~@(map method methods)
+       (set! ~'*unchecked-if* false))))
 
 (defmacro satisfies?
   "Returns true if x satisfies the protocol"
@@ -431,6 +477,13 @@
 (defmacro lazy-seq [& body]
   `(new cljs.core.LazySeq nil false (fn [] ~@body)))
 
+(defmacro delay [& body]
+  "Takes a body of expressions and yields a Delay object that will
+  invoke the body only the first time it is forced (with force or deref/@), and
+  will cache the result and return it on all subsequent force
+  calls."
+  `(new cljs.core.Delay (atom {:done false, :value nil}) (fn [] ~@body)))
+
 (defmacro binding
   "binding => var-symbol init-expr
 
@@ -445,6 +498,7 @@
         tempnames (map (comp gensym name) names)
         binds (map vector names vals)
         resets (reverse (map vector names tempnames))]
+    (cljs.compiler/confirm-bindings &env names)
     `(let [~@(interleave tempnames names)]
        (try
         ~@(map
@@ -497,6 +551,15 @@
     `(let [~gpred ~pred
            ~gexpr ~expr]
        ~(emit gpred gexpr clauses))))
+
+(defmacro case [e & clauses]
+  (let [default (if (odd? (count clauses))
+                  (last clauses)
+                  `(throw (js/Error. (str "No matching clause: " ~e))))
+        pairs (partition 2 clauses)]
+   `(condp = ~e
+      ~@(apply concat pairs)
+      ~default)))
 
 (defmacro try
   "(try expr* catch-clause* finally-clause?)
@@ -635,6 +698,15 @@
                                        (when-let [~seqsym (next ~seqsym)]
                                         ~@(when needrec [recform])))))]))))]
     (nth (step nil (seq seq-exprs)) 1)))
+
+(defmacro array [& rest]
+  (let [xs-str (->> (repeat "~{}")
+                    (take (count rest))
+                    (interpose ",")
+                    (apply str))]
+   (concat
+    (list 'js* (str "[" xs-str "]"))
+    rest)))
 
 (defmacro alength [a]
   (list 'js* "~{}.length" a))

@@ -1,6 +1,157 @@
 (ns cljs.core-test)
 
 (defn test-stuff []
+  ;; -equiv
+  (assert (= 1))
+  (assert (= 1 1))
+  (assert (= 1 1 1))
+  (assert (= 1 1 1 1))
+  (assert (not (= 1 2)))
+  (assert (not (= 1 2 1)))
+  (assert (not (= 1 1 2)))
+  (assert (not (= 1 1 2 1)))
+  (assert (not (= 1 1 1 2)))
+  
+  ;; arithmetic
+  (assert (= (+) 0))
+  (assert (= (apply + []) 0))
+  (assert (= (+ 1) 1))
+  (assert (= (apply + [1]) 1))
+  (assert (= (+ 1 1) 2))
+  (assert (= (apply + [1 1]) 2))
+  (assert (= (+ 1 2 3) 6))
+  (assert (= (apply + [1 2 3]) 6))
+
+  (assert (= (- 1) -1))
+  (assert (= (apply - [1]) -1))
+  (assert (= (- 1 1) 0))
+  (assert (= (apply - [1 1]) 0))
+  (assert (= (- 3 2 1) 0))
+  (assert (= (apply - [3 2 1]) 0))
+
+  (assert (= (*) 1))
+  (assert (= (apply * []) 1))
+  (assert (= (* 2) 2))
+  (assert (= (apply * [2]) 2))
+  (assert (= (* 2 3) 6))
+  (assert (= (apply * [2 3]) 6))
+
+  (assert (= (/ 2) 0.5))
+  (assert (= (apply / [2]) 0.5))
+  (assert (= (/ 6 2) 3))
+  (assert (= (apply / [6 2]) 3))
+  (assert (= (/ 6 3 2) 1))
+  (assert (= (apply / [6 3 2]) 1))
+
+  (assert (= (< 1) true))
+  (assert (= (apply < [1]) true))
+  (assert (= (< 1 2) true))
+  (assert (= (apply < [1 2]) true))
+  (assert (= (< 1 1) false))
+  (assert (= (apply < [1 1]) false))
+  (assert (= (< 2 1) false))
+  (assert (= (apply < [2 1]) false))
+  (assert (= (< 1 2 3) true))
+  (assert (= (apply < [1 2 3]) true))
+  (assert (= (< 1 1 3) false))
+  (assert (= (apply < [1 1 3]) false))
+  (assert (= (< 3 1 1) false))
+  (assert (= (apply < [3 1 1]) false))
+
+  (assert (= (<= 1) true))
+  (assert (= (apply <= [1]) true))
+  (assert (= (<= 1 1) true))
+  (assert (= (apply <= [1 1]) true))
+  (assert (= (<= 1 2) true))
+  (assert (= (apply <= [1 2]) true))
+  (assert (= (<= 2 1) false))
+  (assert (= (apply <= [2 1]) false))
+  (assert (= (<= 1 2 3) true))
+  (assert (= (apply <= [1 2 3]) true))
+  (assert (= (<= 1 1 3) true))
+  (assert (= (apply <= [1 1 3]) true))
+  (assert (= (<= 3 1 1) false))
+  (assert (= (apply <= [3 1 1]) false))
+
+  (assert (= (> 1) true))
+  (assert (= (apply > [1]) true))
+  (assert (= (> 2 1) true))
+  (assert (= (apply > [2 1]) true))
+  (assert (= (> 1 1) false))
+  (assert (= (apply > [1 1]) false))
+  (assert (= (> 1 2) false))
+  (assert (= (apply > [1 2]) false))
+  (assert (= (> 3 2 1) true))
+  (assert (= (apply > [3 2 1]) true))
+  (assert (= (> 3 1 1) false))
+  (assert (= (apply > [3 1 1]) false))
+  (assert (= (> 1 1 3) false))
+  (assert (= (apply > [1 1 3]) false))
+
+  (assert (= (>= 1) true))
+  (assert (= (apply >= [1]) true))
+  (assert (= (>= 2 1) true))
+  (assert (= (apply >= [2 1]) true))
+  (assert (= (>= 1 1) true))
+  (assert (= (apply >= [1 1]) true))
+  (assert (= (>= 1 2) false))
+  (assert (= (apply >= [1 2]) false))
+  (assert (= (>= 3 2 1) true))
+  (assert (= (apply >= [3 2 1]) true))
+  (assert (= (>= 3 1 1) true))
+  (assert (= (apply >= [3 1 1]) true))
+  (assert (= (>= 3 1 2) false))
+  (assert (= (apply >= [3 1 2]) false))
+  (assert (= (>= 1 1 3) false))
+  (assert (= (apply >= [1 1 3]) false))
+
+  (assert (= (dec 1) 0))
+  (assert (= (apply dec [1]) 0))
+  (assert (= (inc 0) 1))
+  (assert (= (apply inc [0]) 1))
+
+  (assert (= (zero? 0) true))
+  (assert (= (apply zero? [0]) true))
+  (assert (= (zero? 1) false))
+  (assert (= (apply zero? [1]) false))
+  (assert (= (zero? -11) false))
+  (assert (= (apply zero? [-11]) false))
+  (assert (= (pos? 0) false))
+  (assert (= (apply pos? [0]) false))
+  (assert (= (pos? 1) true))
+  (assert (= (apply pos? [1]) true))
+  (assert (= (pos? -1) false))
+  (assert (= (apply pos? [-1]) false))
+  (assert (= (neg? -1) true))
+  (assert (= (apply neg? [-1]) true))
+
+  (assert (= (max 1) 1))
+  (assert (= (apply max [1]) 1))
+  (assert (= (max 1 2) 2))
+  (assert (= (apply max [1 2]) 2))
+  (assert (= (max 2 1) 2))
+  (assert (= (apply max [2 1]) 2))
+  (assert (= (max 1 2 3) 3))
+  (assert (= (apply max [1 2 3]) 3))
+  (assert (= (max 1 3 2) 3))
+  (assert (= (apply max [1 3 2]) 3))
+
+  (assert (= (min 1) 1))
+  (assert (= (apply min [1]) 1))
+  (assert (= (min 1 2) 1))
+  (assert (= (apply min [1 2]) 1))
+  (assert (= (min 2 1) 1))
+  (assert (= (apply min [2 1]) 1))
+  (assert (= (min 1 2 3) 1))
+  (assert (= (apply min [1 2 3]) 1))
+  (assert (= (min 2 1 3) 1))
+  (assert (= (apply min [3 1 3]) 1))
+
+  (assert (= (mod 4 2) 0))
+  (assert (= (apply mod [4 2]) 0))
+  (assert (= (mod 3 2) 1))
+  (assert (= (apply mod [3 2]) 1))
+
   (assert (= [4 3 2 1 0] (loop [i 0 j ()]
                  (if (< i 5)
                    (recur (inc i) (conj j (fn [] i)))
@@ -8,6 +159,15 @@
 
   (assert (= [[1 1] [1 2] [1 3] [2 1] [2 2] [2 3]]
              (map #(%) (for [i [1 2] j [1 2 3]] (fn [] [i j])))))
+
+  (assert (= 42 (int 42.5)))
+  (assert (integer? (int 42.5)))
+
+  (assert (= 42 (long 42.5)))
+  (assert (integer? (long 42.5)))
+
+  (assert (= -1 (int -1.5)))
+  (assert (= -9 (long -9.8)))
 
   (assert (= 2 (:b {:a 1 :b 2})))
   (assert (= 2 ('b '{:a 1 b 2})))
@@ -19,6 +179,12 @@
   (assert (= "foo/bar" (namespace 'foo/bar/baz)))
   (assert (= "baz" (name :foo/bar/baz)))
   ;(assert (= "foo/bar" (namespace :foo/bar/baz)))
+
+  ; str
+  (assert (= ":hello" (str :hello)))
+  (assert (= "hello" (str 'hello)))
+  (assert (= "hello:world" (str "hello" :world)))
+  (assert (= ":helloworld" (str :hello 'world)))
 
   (assert (= {:a :b} (get {[1 2 3] {:a :b}, 4 5} [1 2 3])))
   (assert (= :a (nth [:a :b :c :d] 0)))
@@ -35,8 +201,16 @@
   (assert (= (hash-map :foo 5)
              (assoc (cljs.core.ObjMap. nil (array) (js-obj)) :foo 5)))
 
+  (assert (= "\"asdf\"" (pr-str "asdf")))
   (assert (= "[1 true {:a 2, :b 42} #<Array [3, 4]>]"
              (pr-str [1 true {:a 2 :b 42} (array 3 4)])))
+
+  (assert (= "\"asdf\"\n" (prn-str "asdf")))
+  (assert (= "[1 true {:a 2, :b 42} #<Array [3, 4]>]\n"
+             (prn-str [1 true {:a 2 :b 42} (array 3 4)])))
+
+  (assert (= "asdf" (print-str "asdf")))
+  (assert (= "asdf\n" (println-str "asdf")))
 
   ;;this fails in v8 - why?
   ;(assert (= "symbol\"'string" (pr-str (str 'symbol \" \' "string"))))
@@ -376,6 +550,7 @@
   (assert (= (re-matches (re-pattern "foo.*") "foo bar foo baz foo zot") "foo bar foo baz foo zot"))
   (assert (= (re-seq (re-pattern "foo") "foo bar foo baz foo zot") (list "foo" "foo" "foo")))
   (assert (= (re-seq (re-pattern "f(.)o") "foo bar foo baz foo zot") (list ["foo" "o"] ["foo" "o"] ["foo" "o"])))
+  (assert (= (re-matches (re-pattern "(?i)foo") "Foo") "Foo"))
 
   ;; destructuring
   (assert (= [2 1] (let [[a b] [1 2]] [b a])))
@@ -426,6 +601,12 @@
     (assert (not= (seq a) (seq (to-array [1 2 3]))))
     (assert (not= a (aclone a))))
 
+  (let [a (array (array 1 2 3) (array 4 5 6))]
+    (assert (= (aget a 0 1) 2))
+    (assert (= (apply aget a [0 1]) 2))
+    (assert (= (aget a 1 1) 5))
+    (assert (= (apply aget a [1 1]) 5)))
+
   ;; sort
   (assert (= [1 2 3 4 5] (sort [5 3 1 4 2])))
   (assert (= [1 2 3 4 5] (sort < [5 3 1 4 2])))
@@ -437,6 +618,8 @@
 
   ;; js->clj
   (assert (= {"a" 1, "b" 2} (js->clj (js* "{\"a\":1,\"b\":2}"))))
+  (assert (= {"a" nil} (js->clj (js* "{\"a\":null}"))))
+  (assert (= {"a" true, "b" false} (js->clj (js* "{\"a\":true,\"b\":false}"))))
   (assert (= {:a 1, :b 2} (js->clj (js* "{\"a\":1,\"b\":2}") :keywordize-keys true)))
   (assert (= [[{:a 1, :b 2} {:a 1, :b 2}]]
                (js->clj (js* "[[{\"a\":1,\"b\":2}, {\"a\":1,\"b\":2}]]") :keywordize-keys true)))
@@ -460,13 +643,17 @@
     (assert (= @s (reverse v))))
 
   ;; delay
-  ;; (let [d (delay (. (js/Date.) (getTime)))]
-  ;;   (assert (false? (realized? d)))
-  ;;   (let [d2 (. (js/Date.) (getTime))]
-  ;;     (assert (> d2 (deref d))))
-  ;;   (assert (true? (realized? d)))
-  ;;   (let [d3 (deref d)]
-  ;;     (assert (= (deref d) d3))))
+  (let [a (atom 0)
+        d (delay (swap! a inc))]
+    (assert (false? (realized? d)))
+    (assert (zero? @a)) ;; delay hasn't triggered yet
+    (assert (= 1 @d)) ;; trigger it
+    (assert (= 1 @a)) ;; make sure side effect has happened
+    (assert (true? (realized? d)))
+    (assert (= 1 @d)) ;; body doesn't happen again
+    (assert (= 1 @a)) ;; atom hasn't changed either
+    (assert (= (force d) @d))
+    (assert (= 1 (force 1)))) ;; you can safely force non-delays
 
   ;; assoc
   (assert (= {1 2 3 4} (assoc {} 1 2 3 4)))
@@ -660,11 +847,11 @@
   (assert (= :nested-a (nested-dispatch2 [[:a :b]])))
 
   ;; general tests
-  (defmulti foo (fn [& args] (first args)))
-  (defmethod foo :a [& args] :a-return)
-  (defmethod foo :default [& args] :default-return)
-  (assert (= :a-return (foo :a)))
-  (assert (= :default-return (foo 1)))
+  (defmulti foo1 (fn [& args] (first args)))
+  (defmethod foo1 :a [& args] :a-return)
+  (defmethod foo1 :default [& args] :default-return)
+  (assert (= :a-return (foo1 :a)))
+  (assert (= :default-return (foo1 1)))
 
   (defmulti area :Shape)
   (defn rect [wd ht] {:Shape :Rect :wd wd :ht ht})
@@ -714,6 +901,24 @@
   (assert (= (count (range 0 0 0)) 0))
   (assert (= (take 3 (range 1 0 0)) (list 1 1 1)))
   (assert (= (take 3 (range 3 1 0)) (list 3 3 3)))
+  ;; PersistentVector
+  (let [pv (vec (range 97))]
+    (assert (= (nth pv 96) 96))
+    (assert (= (nth pv 97 nil) nil))
+    (assert (= (pv 96) 96)))
+
+  (let [pv (vec (range 33))]
+    (assert (= pv
+               (-> pv
+                   pop
+                   pop
+                   (conj 31)
+                   (conj 32)))))
+  
+  (let [stack1 (pop (vec (range 97)))
+        stack2 (pop stack1)]
+    (assert (= 95 (peek stack1)))
+    (assert (= 94 (peek stack2))))
 
   ;; subvec
   (let [v (vec (range 10))
@@ -784,7 +989,7 @@
              (map->Person {:firstname "Fred" :lastname "Mertz" :wife :ethel})))
   (assert (= (dissoc ethel :husband)
              (map->Person {:firstname "Ethel" :lastname "Mertz"})))
-  
+
   (defrecord A [x])
   (defrecord B [x])
   (assert (not= (A. nil) (B. nil)))
@@ -802,25 +1007,25 @@
   (assert (= (meta (with-meta (reify IFoo (foo [this] :foo)) {:foo :bar}))
              {:foo :bar}))
 
-  (defmulti foo identity)
-  (defmethod foo 0 [x] x)
-  (assert (= foo (ffirst {foo 1})))
-  
+  (defmulti foo2 identity)
+  (defmethod foo2 0 [x] x)
+  (assert (= foo2 (ffirst {foo2 1})))
+
   (defprotocol IMutate
     (mutate [this]))
-  
+
   (deftype Mutate [^:mutable a]
     IMutate
     (mutate [_]
       (set! a 'foo)))
-  
+
   ;; IFn
   (deftype FnLike []
     IFn
     (-invoke [_] :a)
     (-invoke [_ a] :b)
     (-invoke [_ a b] :c))
-  
+
   (assert (= :a ((FnLike.))))
   (assert (= :b ((FnLike.) 1)))
   (assert (= :c ((FnLike.) 1 2)))
@@ -832,10 +1037,60 @@
     (-invoke [_] a))
 
   (assert (= 1 ((FnLikeB. 1))))
-  
+
   ;; hashing bug in many JS runtimes CLJ-118
   (let [g #{(conj #{:2} :alt)}
         h #{#{:2 :alt}}]
     (assert (= g h)))
+  (assert (= (hash {:a 1 :b 2})
+             (hash {:b 2 :a 1})))
+  (assert (= (hash (hash-map :a 1 :b 2))
+             (hash (hash-map :b 2 :a 1))))
+  (assert (= (hash {:start 133 :end 134})
+             (hash (apply hash-map [:start 133 :end 134]))))
 
-  :ok)
+  (defprotocol IHasFirst
+    (-get-first [this]))
+
+  (defprotocol IFindsFirst
+    (-find-first [this other]))
+
+  (deftype First [xs]
+    ISeqable
+    (-seq [this] (seq xs))
+    IIndexed
+    (-nth [this i] (nth xs i))
+    (-nth [this i not-found] (nth xs i not-found))
+    IFn
+    (-invoke [[x]] x)
+    (-invoke [this x] this)
+    Object
+    (toString [[x]] (str x))
+    IHasFirst
+    (-get-first [[x]] x)
+    IFindsFirst
+    (-find-first [_ [x]] x))
+
+  (let [fv (First. [1 2 3])
+        fs (First. "asdf")]
+    (assert (= (fv) 1))
+    (assert (= (fs) \a))
+    (assert (= (str fs) \a))
+    (assert (= (-get-first fv) 1))
+    (assert (= (-get-first fs) \a))
+    (assert (= (-find-first fv [1]) 1))
+    (assert (identical? (fv 1) fv)))
+
+  (let [x 1]
+    (assert (= (case x 1 :one) :one)))
+  (let [x 1]
+    (assert (= (case x 2 :two :default) :default)))
+  (let [x 1]
+    (assert (= (try
+                 (case x 3 :three)
+                 (catch js/Error e
+                     :fail))
+               :fail)))
+
+  :ok
+  )
